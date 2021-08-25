@@ -34,9 +34,10 @@ func isPalindrome(x int) bool {
 	if y != num {
 		return false
 	}
+
 	return true
 }
 
 func main() {
-
+	isPalindrome(-123)
 }
