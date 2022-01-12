@@ -1,6 +1,8 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type ListNode struct {
 	Val  int
@@ -35,6 +37,18 @@ func addTwoNumbers(l1 *ListNode, l2 *ListNode) (head *ListNode) {
 		tail.Next = &ListNode{Val: carry}
 	}
 	return
+}
+func LoginOther() string {
+	//Do WyLogin
+	var errCode int
+	var errMsg string
+	if errCode != 0 {
+		//不做任何处理,直接返回网鱼的错误信息
+		return errMsg
+	}
+	//Do LockScreen
+	//Do DownMachine
+	return ""
 }
 
 func main() {

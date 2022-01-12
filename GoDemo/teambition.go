@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	_ "github.com/go-sql-driver/mysql"
@@ -93,6 +92,23 @@ type User struct {
 type UserBind struct {
 	Username sql.NullString `db:"username"`
 	Userid   sql.NullString `db:"userid"`
+}
+
+type UserProject struct {
+	Code          int    `json:"code"`
+	ErrorMessage  string `json:"errorMessage"`
+	Count         int    `json:"count"`
+	NextPageToken string `json:"nextPageToken"`
+	Result        []struct {
+		AvatarUrl string    `json:"avatarUrl"`
+		Email     string    `json:"email"`
+		MemberId  string    `json:"memberId"`
+		Name      string    `json:"name"`
+		Phone     string    `json:"phone"`
+		Role      int       `json:"role"`
+		Updated   time.Time `json:"updated"`
+		UserId    string    `json:"userId"`
+	} `json:"result"`
 }
 
 func dbInit() *sql.DB {
@@ -247,6 +263,39 @@ func wywkMember() []byte {
 	return body
 }
 
+func projectMember(projectid string) []byte {
+	token := tokencreate()
+
+	url := "https://open.teambition.com/api/project/member/list?projectId=" + projectid + "&pageToken&pageSize=1000"
+	method := "GET"
+
+	client := &http.Client{}
+	req, err := http.NewRequest(method, url, nil)
+
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Authorization", "Bearer "+token)
+	req.Header.Add("X-Tenant-Id", "5e12a6349cb08f0001fbdbc4")
+	req.Header.Add("X-Tenant-Type", "organization")
+
+	res, err := client.Do(req)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	defer res.Body.Close()
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	return body
+}
+
 func selectMember(DB *sql.DB, userid string) string {
 	userbind := new(UserBind)
 	row := DB.QueryRow("select username from user_tb where userid=?", userid)
@@ -265,108 +314,108 @@ func issuesInit(DB *sql.DB) {
 	}
 }
 func main() {
-	//body := wywkMember()
+	tokencreate()
+	//body := projectMember("61309876bee0dfac6d17c84e")
 	//DB := dbInit()
-	//var user User
+	//var user UserProject
 	//err := json.Unmarshal(body,&user)
 	//if err != nil {
 	//	fmt.Printf("反序列化错误：%s",err)
 	//}
 	//fmt.Printf("用户：%+v,userid：%+v",user.Result[0].Name, user.Result[0].UserId)
-	//a :=selectMember(DB, user.Result[0].UserId)
-	//fmt.Println(a.String)
-
-	//用户数据存储
+	////a :=selectMember(DB, user.Result[0].UserId)
+	////fmt.Println(a)
+	////用户数据存储
 	//for index, _ := range user.Result {
 	//	username := user.Result[index].Name
 	//	userid := user.Result[index].UserId
-	//	if username != "" {
+	//	a :=selectMember(DB, user.Result[index].UserId)
+	//	if username != "" && a=="员工已离职"{
+	//		fmt.Printf("用户：%+v,userid：%+v",user.Result[index].Name, user.Result[index].UserId)
 	//		insertUserData(DB,username,userid)
 	//	}
 	//}
 
-	body := tasksearch()
-	//fmt.Printf("body 的数据类型是: %T\n",body)
-	var track Track
-	err2 := json.Unmarshal(body, &track)
-	//fmt.Printf("%+v",track.Result[0].Customfields)
-	if err2 != nil {
-		fmt.Printf("反序列化错误：%s", err2)
-	}
-	DB := dbInit()
-
-	for index, _ := range track.Result {
-		//缺陷标题
-		trackTitle := track.Result[index].Content
-		//创建人
-		creator := track.Result[index].CreatorId
-		//缺陷内容
-		trackContent := track.Result[index].Note
-		//创建时间
-		createTime := track.Result[index].Created
-		//执行人
-		executor := track.Result[index].ExecutorId
-		//fmt.Printf("缺陷标题:%s\n，缺陷创建人:%s\n,缺席内容:%s\n,创建时间:%s\n,缺陷等级:%d\n,缺陷状态:%d\n,执行者:%s\n",trackTitle,creator,trackContent,createTime,level,status,rd)
-		//更新时间
-		updateTime := track.Result[index].Updated
-		//缺陷等级
-		fmt.Printf("测试%+v", track.Result[index])
-		var bugLevelStr string
-		var bugType string
-		var iteration string
-		cfd := track.Result[index].Customfields
-		bugLevelStr = "未填写"
-		bugType = "未填写"
-		iteration = "未填写"
-		if len(cfd) > 0 {
-			for index, _ := range cfd {
-				if cfd[index].CfId == "5e12a64103bbcc000193b072" {
-					iteration = cfd[index].Value[0].Title
-				}
-				if cfd[index].CfId == "5e12a64103bbcc000193b070" {
-					bugLevelStr = cfd[index].Value[0].Title
-				}
-				if cfd[index].CfId == "5e12a64103bbcc000193b071" {
-					bugType = cfd[index].Value[0].Title
-				}
-				//else {
-				//	bugLevelStr = "未填写"
-				//	bugType = "未填写"
-				//	iteration = "未填写"
-				//}
-			}
-
-			var bugLevel int
-			if bugLevelStr == "致命" {
-				bugLevel = 0
-			} else if bugLevelStr == "严重" {
-				bugLevel = 1
-			} else if bugLevelStr == "一般" {
-				bugLevel = 2
-			} else if bugLevelStr == "轻微" {
-				bugLevel = 3
-			}
-			//缺陷状态
-			bugStatus := track.Result[index].IsDone
-			//缺陷类型
-			//完成时间
-			accomplishDate := track.Result[index].AccomplishDate
-			//截止时间
-			dueDate := track.Result[index].DueDate
-			//是否延期
-			var bugDelay int
-			if accomplishDate.Unix() < dueDate.Unix() {
-				bugDelay = 0
-			} else {
-				bugDelay = 1
-			}
-			//
-			project := "核心系统2.0"
-			creator = selectMember(DB, creator)
-			executor = selectMember(DB, executor)
-
-			insertIssueData(DB, trackTitle, creator, trackContent, createTime, updateTime, index, executor, bugLevel, bugStatus, project, bugType, accomplishDate, dueDate, bugDelay, iteration)
-		}
-	}
-
+	//body := tasksearch()
+	////fmt.Printf("body 的数据类型是: %T\n",body)
+	//var track Track
+	//err2 := json.Unmarshal(body, &track)
+	////fmt.Printf("%+v",track.Result[0].Customfields)
+	//if err2 != nil {
+	//	fmt.Printf("反序列化错误：%s", err2)
+	//}
+	//DB := dbInit()
+	//
+	//for index, _ := range track.Result {
+	//	//缺陷标题
+	//	trackTitle := track.Result[index].Content
+	//	//创建人
+	//	creator := track.Result[index].CreatorId
+	//	//缺陷内容
+	//	trackContent := track.Result[index].Note
+	//	//创建时间
+	//	createTime := track.Result[index].Created
+	//	//执行人
+	//	executor := track.Result[index].ExecutorId
+	//	//fmt.Printf("缺陷标题:%s\n，缺陷创建人:%s\n,缺席内容:%s\n,创建时间:%s\n,缺陷等级:%d\n,缺陷状态:%d\n,执行者:%s\n",trackTitle,creator,trackContent,createTime,level,status,rd)
+	//	//更新时间
+	//	updateTime := track.Result[index].Updated
+	//	//缺陷等级
+	//	fmt.Printf("测试%+v", track.Result[index])
+	//	var bugLevelStr string
+	//	var bugType string
+	//	var iteration string
+	//	cfd := track.Result[index].Customfields
+	//	bugLevelStr = "未填写"
+	//	bugType = "未填写"
+	//	iteration = "未填写"
+	//	if len(cfd) > 0 {
+	//		for index, _ := range cfd {
+	//			if cfd[index].CfId == "5e12a64103bbcc000193b072" {
+	//				iteration = cfd[index].Value[0].Title
+	//			}
+	//			if cfd[index].CfId == "5e12a64103bbcc000193b070" {
+	//				bugLevelStr = cfd[index].Value[0].Title
+	//			}
+	//			if cfd[index].CfId == "5e12a64103bbcc000193b071" {
+	//				bugType = cfd[index].Value[0].Title
+	//			}
+	//			//else {
+	//			//	bugLevelStr = "未填写"
+	//			//	bugType = "未填写"
+	//			//	iteration = "未填写"
+	//			//}
+	//		}
+	//
+	//		var bugLevel int
+	//		if bugLevelStr == "致命" {
+	//			bugLevel = 0
+	//		} else if bugLevelStr == "严重" {
+	//			bugLevel = 1
+	//		} else if bugLevelStr == "一般" {
+	//			bugLevel = 2
+	//		} else if bugLevelStr == "轻微" {
+	//			bugLevel = 3
+	//		}
+	//		//缺陷状态
+	//		bugStatus := track.Result[index].IsDone
+	//		//缺陷类型
+	//		//完成时间
+	//		accomplishDate := track.Result[index].AccomplishDate
+	//		//截止时间
+	//		dueDate := track.Result[index].DueDate
+	//		//是否延期
+	//		var bugDelay int
+	//		if accomplishDate.Unix() < dueDate.Unix() {
+	//			bugDelay = 0
+	//		} else {
+	//			bugDelay = 1
+	//		}
+	//		//
+	//		project := "核心系统2.0"
+	//		creator = selectMember(DB, creator)
+	//		executor = selectMember(DB, executor)
+	//
+	//		insertIssueData(DB, trackTitle, creator, trackContent, createTime, updateTime, index, executor, bugLevel, bugStatus, project, bugType, accomplishDate, dueDate, bugDelay, iteration)
+	//	}
 }
