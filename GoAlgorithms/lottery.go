@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/unliar/utils/go/math"
 	"math/rand"
 	"time"
 )
@@ -35,7 +34,7 @@ func GetRandomWheel(r []Reward) string {
 	}
 	ts := time.Now().Unix()
 	rand.Seed(ts)
-	rt := math.GetRandomInt(max, min)
+	rt := rand.Intn(max-min) + min
 	for _, item2 := range r {
 		if rt >= item2.NumStart && rt <= item2.NumEnd {
 			key = item2.Key
